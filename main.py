@@ -1,7 +1,7 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, pygame
+import os, pygame, math
 from pygame.locals import *
 from ubuntutweak.gui.widgets import Switch
 
@@ -10,6 +10,7 @@ if not pygame.mixer: print 'Warning, sound disabled'
 
 class Player(pygame.sprite.Sprite):
   MAX_SPEED = 3
+  ACCELERATION = 0.1
   
   def __init__(self, color, team):
     pygame.sprite.Sprite.__init__(self)
@@ -18,6 +19,7 @@ class Player(pygame.sprite.Sprite):
     self.image = pygame.Surface([50, 50])
     self.image.fill(color)
     pygame.draw.circle(self.image, (0, 0, 255), (25, 25), 25, 0)
+    self.speed = {'x': 0, 'y': 0}
 
     # Fetch the rectangle object that has the dimensions of the image
     # Update the position of this object by setting the values of rect.x and rect.y
@@ -28,22 +30,31 @@ class Player(pygame.sprite.Sprite):
     self.area = screen.get_rect()
     
   def move(self, direction):
-    x, y = 0, 0
-    if direction['x'] == K_LEFT:
-      x = -self.MAX_SPEED
-    elif direction['x'] == K_RIGHT:
-      x = self.MAX_SPEED
-    if direction['y'] == K_UP:
-      y = -self.MAX_SPEED
-    elif direction['y'] == K_DOWN:
-      y = self.MAX_SPEED
-    self._move(x, y)
+    """Przesuwa w odpowiednim kierunku uwzględniając prędkość"""
+    self._speed('x', direction['x'])
+    self._speed('y', direction['y'])
+    self._move(round(self.speed['x']), round(self.speed['y']))
 
+  def _speed(self, coordinate, direction):
+    """Oblicza aktualną prędkość na współrzędnej w określonym kierunku"""
+    if (direction == K_RIGHT or direction == K_DOWN) and self.speed[coordinate] < self.MAX_SPEED:
+      if self.speed[coordinate] < 0:
+        self.speed[coordinate] += self.ACCELERATION
+      self.speed[coordinate] += self.ACCELERATION
+    elif (direction == K_LEFT or direction == K_UP) and self.speed[coordinate] > -self.MAX_SPEED:
+      if self.speed[coordinate] > 0:
+        self.speed[coordinate] -= self.ACCELERATION
+      self.speed[coordinate] -= self.ACCELERATION
+    elif direction == 0:
+      if math.fabs(self.speed[coordinate]) < self.ACCELERATION * 2:
+        self.speed[coordinate] = 0
+      elif self.speed[coordinate] > 0:
+        self.speed[coordinate] -= self.ACCELERATION
+      elif self.speed[coordinate] < 0:
+        self.speed[coordinate] += self.ACCELERATION
   
   def _move(self, x, y):
-    """Przesuwa o zadaną liczbę pixeli, nie pozwala wyjść poza boisko
-    """
-    print self.rect.left, self.area.left
+    """Przesuwa o zadaną liczbę pixeli, nie pozwala wyjść poza boisko"""
     if self.rect.left + x < self.area.left:
       x = self.area.left - self.rect.left
     elif self.rect.right + x > self.area.right:
